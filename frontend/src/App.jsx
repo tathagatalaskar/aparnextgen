@@ -20,13 +20,19 @@ function AuthorityOnly({ children }) {
   return user.role === 'AUTHORITY' ? children : <Navigate to="/" replace />
 }
 
+function EmployeeOnly({ children }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  return user.role === 'EMPLOYEE' ? children : <Navigate to="/" replace />
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
-      <Route path="/submit" element={<Protected><SubmitAcr /></Protected>} />
+      <Route path="/submit" element={<EmployeeOnly><SubmitAcr /></EmployeeOnly>} />
       <Route path="/acr/:id" element={<Protected><AcrDetail /></Protected>} />
       <Route path="/directory" element={<AuthorityOnly><EmployeeDirectory /></AuthorityOnly>} />
       <Route path="/notify" element={<AuthorityOnly><Notify /></AuthorityOnly>} />
