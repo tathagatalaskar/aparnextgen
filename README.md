@@ -13,7 +13,7 @@ This is a full-stack application. **Deploy the React frontend to Vercel, and dep
 Create a PostgreSQL 16 database and run:
 
 ```bash
-psql "$SPRING_DATASOURCE_URL" -f db/init/01_schema.sql
+psql "postgresql://DB_USER:DB_PASSWORD@DB_HOST:5432/DB_NAME?sslmode=require" -f db/init/01_schema.sql
 ```
 
 Do **not** run `db/init/02_seed.sql` against a real production database. It inserts publicly documented demo accounts and sample data for local demonstrations only.
@@ -71,7 +71,7 @@ Stop with `Ctrl+C`. Remove local database data with `docker compose down -v`.
 createdb apar_db
 psql -d apar_db -f db/init/01_schema.sql
 psql -d apar_db -f db/init/02_seed.sql
-cd backend && mvn spring-boot:run
+cd backend && APP_JWT_SECRET=local_dev_only_change_to_a_random_secret_of_at_least_32_bytes mvn spring-boot:run
 # In a second terminal:
 cd frontend && npm ci && npm run dev
 ```
