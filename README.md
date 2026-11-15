@@ -43,10 +43,10 @@ The backend URL must be publicly reachable over HTTPS. Its API base path is `/ap
 ### 3. Deploy the frontend to Vercel
 
 1. Import this GitHub repository into Vercel.
-2. Set **Root Directory** to `frontend`.
-3. Framework preset: **Vite**.
-4. Build command: `npm run build`.
-5. Output directory: `dist`.
+2. Set **Root Directory** to the repository root (`.`). The root `vercel.json` installs and builds the Vite app inside `frontend`.
+3. The Vercel config sets the install command, build command, output directory (`frontend/dist`), and SPA rewrite automatically. Do not override them unless you intentionally set Root Directory to `frontend`.
+
+Alternatively, you can set **Root Directory** to `frontend`; in that case use `npm run build` as the build command and `dist` as the output directory.
 6. Add the environment variable `VITE_API_BASE_URL` with the backend's public URL ending in `/api`.
 7. Keep `VITE_SHOW_DEMO_ACCOUNTS` unset or set it to `false`.
 8. Deploy, then add the exact Vercel production URL to the backend's `APP_CORS_ORIGINS`.
@@ -76,7 +76,7 @@ cd backend && APP_JWT_SECRET=local_dev_only_change_to_a_random_secret_of_at_leas
 cd frontend && npm ci && npm run dev
 ```
 
-For a local frontend build, set `VITE_API_BASE_URL=http://localhost:8080/api`. The development Vite server defaults to this URL.
+For a local frontend build, set `VITE_API_BASE_URL=http://localhost:8080/api`. The development Vite server defaults to this URL. For the manual backend command above, provide a temporary local-only JWT secret; production deployments must use a separately generated secret.
 
 ## Roles and workflow
 
