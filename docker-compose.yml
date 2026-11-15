@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: apar_db
       POSTGRES_USER: apar_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-apar_pass}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
     volumes:
       - apar_pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
@@ -27,8 +27,8 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/apar_db
       SPRING_DATASOURCE_USERNAME: apar_admin
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-apar_pass}
-      APP_JWT_SECRET: ${JWT_SECRET:-dev_secret_min_256_bits_long_change_this_in_production_2026_abcd}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
+      APP_JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your .env file}
       APP_CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
       - "8080:8080"
