@@ -153,9 +153,7 @@ public class EmployeeService {
         e.setIsActive(active);
         employeeRepository.save(e);
         // also toggle the linked login account if any
-        accountRepository.findAll().stream()
-                .filter(a -> a.getEmployeeId().equals(employeeId))
-                .forEach(a -> { a.setIsActive(active); accountRepository.save(a); });
+        accountRepository.findAllByEmployeeId(employeeId).forEach(a -> a.setIsActive(active));
         notificationService.notify(employeeId, actorId, "ANNOUNCEMENT",
                 active ? "Your account has been activated" : "Your account has been deactivated",
                 active ? "Your account is now active. You can log in and use the portal."
@@ -177,9 +175,7 @@ public class EmployeeService {
                     detailRepository.deleteByEmployeeIdAndAssessmentYear(employeeId, st.getAssessmentYear());
                     statusRepository.delete(st);
                 });
-        accountRepository.findAll().stream()
-                .filter(a -> a.getEmployeeId().equals(employeeId))
-                .forEach(accountRepository::delete);
+        accountRepository.deleteAllByEmployeeId(employeeId);
         employeeRepository.delete(e);
     }
 
@@ -195,8 +191,7 @@ public class EmployeeService {
     }
 
     private boolean hasAuthorityAccount(Long employeeId) {
-        return accountRepository.findAll().stream()
-                .anyMatch(a -> a.getEmployeeId().equals(employeeId) && a.getRole() == Role.AUTHORITY);
+        return accountRepository.existsByEmployeeIdAndRole(employeeId, Role.AUTHORITY);
     }
 
     private EmployeeDetails load(Long id) {

@@ -45,3 +45,5 @@ jobs:
           cache: maven
       - name: Verify backend
         run: mvn -B -f backend/pom.xml verify
+      - name: Build backend container
+        run: docker build -f backend/Dockerfile -t apar-backend:ci .
