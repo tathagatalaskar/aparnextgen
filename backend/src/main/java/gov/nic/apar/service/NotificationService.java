@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -134,7 +135,7 @@ public class NotificationService {
         Optional<AcrCycle> open = cycleRepository.findFirstByIsOpenTrueOrderByDueDateDesc();
         if (open.isEmpty()) return 0;
         AcrCycle cycle = open.get();
-        if (LocalDate.now().isBefore(cycle.getDueDate().minusDays(REMINDER_LEAD_DAYS))) return 0;
+        if (LocalDate.now(ZoneId.of("Asia/Kolkata")).isBefore(cycle.getDueDate().minusDays(REMINDER_LEAD_DAYS))) return 0;
 
         Set<Long> withLogin = employeeLoginIds();
         int created = 0;
