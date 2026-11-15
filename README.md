@@ -1,115 +1,114 @@
 # APAR / ACR Management System — NIC Tripura
 
-A secure full-stack Annual Performance Assessment Report (APAR / ACR) system built on the
-**NIC SPARROW table design** (schema `tran`). Employees fill their self-appraisal
-(targets & achievements); a single **Reporting Authority** reviews every ACR, grades it,
-adds remarks, and can flag it. The authority also has a full **employee directory**.
+A secure full-stack Annual Performance Assessment Report (APAR / ACR) portal built on the NIC SPARROW-style `tran` schema.
 
-**Stack:** React (Vite) + Tailwind · Spring Boot 3 (Java 17) · PostgreSQL 16 (schema `tran`) · JWT · Docker
+**Stack:** React 18 + Vite + Tailwind · Spring Boot 3 / Java 17 · PostgreSQL 16 · JWT · Docker
 
----
+## Deployment
 
-## Database design (schema `tran`)
+This is a full-stack application. **Deploy the React frontend to Vercel, and deploy the Spring Boot backend plus PostgreSQL separately.** Vercel's static frontend hosting does not run this Spring Boot API as a normal Vite site.
 
-Built directly on the faculty-provided NIC table design:
+### 1. Prepare PostgreSQL
 
-| Table | Purpose |
-|-------|---------|
-| `tran.employee_details` | Master roll of officers — ID, name parts, gender (M/F), DOB, mobile |
-| `tran.employee_acr_status` | One row per employee per year — submission status + grade/remarks/flag |
-| `tran.employee_acr_details` | Target / achievement rows of each ACR |
-| `tran.user_account` | Login credentials (email + BCrypt password + role), linked to an employee |
-| `tran.organization` / `tran.office` / `tran.department` | Lookup/master data for the IDs |
+Create a PostgreSQL 16 database and run:
 
----
+```bash
+psql "$SPRING_DATASOURCE_URL" -f db/init/01_schema.sql
+```
 
-## Two roles
+Do **not** run `db/init/02_seed.sql` against a real production database. It inserts publicly documented demo accounts and sample data for local demonstrations only.
 
-| Role | Can do |
-|------|--------|
-| **Employee** | **Self-register**, log in, submit ACR (targets/achievements), view own ACRs + grades |
-| **Authority** | View all submitted ACRs, grade + remark + flag, **add / edit / activate-deactivate employees**, browse directory |
+### 2. Deploy the backend
 
-New employees can **register themselves**; the Authority can **add / edit / delete /
-activate / deactivate** employees. Every flag, activation, deactivation and assessment
-**notifies the employee**.
+Build and deploy the `backend/Dockerfile` with a Java 17 compatible container host. Set these environment variables in that host:
 
-### APAR workflow (gated)
-The APAR form is **locked by default**. The Authority selects employees and **sends an APAR
-reminder**, which **unlocks the form for that employee in near-real-time** (the portal polls
-every ~10s). Automatic reminders are also generated daily for anyone who hasn't submitted by
-the due window. Each employee only ever sees **their own** notifications and reminders.
+| Variable | Required | Example / meaning |
+|---|---:|---|
+| `SPRING_DATASOURCE_URL` | Yes | `jdbc:postgresql://HOST:5432/DB?sslmode=require` |
+| `SPRING_DATASOURCE_USERNAME` | Yes | Production database user |
+| `SPRING_DATASOURCE_PASSWORD` | Yes | Production database password |
+| `APP_JWT_SECRET` | Yes | Unique random secret, at least 32 bytes |
+| `APP_CORS_ORIGINS` | Yes | Comma-separated exact frontend origins, e.g. `https://your-app.vercel.app` |
+| `PORT` | No | Defaults to `8080` |
+| `APP_JWT_EXPIRATION_MS` | No | Defaults to `3600000` (one hour) |
 
-### Notification centre
-Every user has a **bell with an unread badge** and a dropdown notification centre. The
-Authority can send **manual notifications** to one / many / a department / or all employees.
+Generate a strong JWT secret with:
 
-Employees only see their own ACRs; cross-access is blocked server-side (403).
+```bash
+openssl rand -base64 48
+```
 
----
+The backend URL must be publicly reachable over HTTPS. Its API base path is `/api`; for example `https://your-backend.example.com/api`.
 
-## Demo accounts (password: `Password@123`)
+### 3. Deploy the frontend to Vercel
 
-| Role | Email | Employee |
-|------|-------|----------|
-| Authority | authority@nic.in | Smt Anita Sharma (ID 81848) |
-| Employee | employee@nic.in | Shri Tathagata Laskar (ID 81851) |
-| Employee | priya@nic.in | Smt Priya Menon (ID 81853) — has a sample ACR ready |
+1. Import this GitHub repository into Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Framework preset: **Vite**.
+4. Build command: `npm run build`.
+5. Output directory: `dist`.
+6. Add the environment variable `VITE_API_BASE_URL` with the backend's public URL ending in `/api`.
+7. Keep `VITE_SHOW_DEMO_ACCOUNTS` unset or set it to `false`.
+8. Deploy, then add the exact Vercel production URL to the backend's `APP_CORS_ORIGINS`.
 
----
+The Vercel rewrite in `frontend/vercel.json` routes direct visits to React Router pages (for example `/register` and `/acr/123`) back to `index.html`.
 
-## Run it (Docker)
+After changing Vercel environment variables, redeploy the frontend so Vite can include the new value in its build.
+
+### 4. Local development with Docker
 
 ```bash
 docker compose up --build
 ```
-Open **http://localhost:5173**. Schema + demo data load automatically.
-Stop: `Ctrl+C`. Wipe DB: `docker compose down -v`.
 
----
+Open `http://localhost:5173`. The local compose setup loads both SQL files, including demo accounts. The seeded demo password is `Password@123`; never use those accounts or the local fallback secrets in a production deployment.
 
-## Run it (manual)
+Stop with `Ctrl+C`. Remove local database data with `docker compose down -v`.
+
+### 5. Local development without Docker
 
 ```bash
 createdb apar_db
 psql -d apar_db -f db/init/01_schema.sql
 psql -d apar_db -f db/init/02_seed.sql
-cd backend && mvn spring-boot:run     # needs Java 17 + Maven
-cd frontend && npm install && npm run dev   # needs Node 20
+cd backend && mvn spring-boot:run
+# In a second terminal:
+cd frontend && npm ci && npm run dev
 ```
 
----
+For a local frontend build, set `VITE_API_BASE_URL=http://localhost:8080/api`. The development Vite server defaults to this URL.
 
-## API endpoints
+## Roles and workflow
 
-| Method | Path | Role | Purpose |
-|--------|------|------|---------|
-| POST | `/api/auth/login` | public | Get JWT |
-| POST | `/api/auth/register` | public | Self-register a new employee |
-| GET | `/api/v1/meta/departments` | public | Department list (for the register form) |
-| GET | `/api/v1/employees` | Authority | List/manage employees |
-| POST | `/api/v1/employees` | Authority | Add an employee |
-| PUT | `/api/v1/employees/{id}` | Authority | Edit an employee |
-| PATCH | `/api/v1/employees/{id}/active?active=` | Authority | Activate / deactivate |
-| DELETE | `/api/v1/employees/{id}` | Authority | Delete an employee |
-| GET | `/api/v1/acr/eligibility` | Employee | Is the APAR form unlocked? |
-| GET | `/api/v1/notifications` | any | Own notification centre |
-| GET | `/api/v1/notifications/unread-count` | any | Unread badge count |
-| PATCH | `/api/v1/notifications/{id}/read` | any | Mark read |
-| POST | `/api/v1/notifications/send` | Authority | Manual notification (one/many/dept/all) |
-| POST | `/api/v1/notifications/reminders` | Authority | Send APAR reminders (unlocks forms) |
-| GET | `/api/v1/notifications/pending` | Authority | Who hasn't submitted |
-| GET / PUT | `/api/v1/me` | Employee | View / edit own profile |
-| GET | `/api/v1/acr` | any | List ACRs (own / all) |
-| GET | `/api/v1/acr/{statusId}` | any | One ACR detail |
-| POST | `/api/v1/acr/submit` | Employee | Submit ACR |
-| PUT | `/api/v1/acr/{statusId}/review` | Authority | Grade / remark / flag |
-| GET | `/api/v1/acr/employees` | Authority | Employee directory |
+| Role | Capabilities |
+|---|---|
+| Employee | Self-register, sign in, submit APAR when unlocked, view own reports, edit contact details, receive notifications |
+| Authority | Review submitted reports, grade/remark/flag, manage employees, send notifications and APAR reminders |
 
----
+The APAR form is locked until an authority sends a reminder. Employees can only access their own reports and notifications; these ownership checks are enforced by the backend.
 
-## Security
-JWT stateless auth · BCrypt passwords · CORS whitelist · server-side `@Valid` validation ·
-SQL-injection-safe (JPA parameter binding) · role checks in the service layer ·
-security headers (X-Frame-Options, nosniff). Login is separated from HR master data
-(`user_account` vs `employee_details`) — government best practice.
+## Security notes
+
+- JWT stateless authentication and BCrypt password hashes.
+- Role checks enforced on server endpoints and service operations.
+- CORS uses a comma-separated list of exact frontend origins; whitespace around entries is trimmed.
+- Production startup requires `APP_JWT_SECRET`; do not rely on local development defaults.
+- Demo credentials are hidden in production unless `VITE_SHOW_DEMO_ACCOUNTS=true` is explicitly set.
+- Contact email in the employee profile is HR contact information; it does not change the account's login email.
+
+## Continuous integration
+
+GitHub Actions builds the Vite frontend and runs Maven verification for the backend on pushes and pull requests.
+
+## API base paths
+
+The backend uses the `/api` servlet context path. Main routes include:
+
+- `POST /api/auth/login`, `POST /api/auth/register`
+- `GET /api/v1/meta/departments`, `GET /api/v1/meta/offices`
+- `GET/POST/PUT/DELETE /api/v1/employees` (authority)
+- `GET /api/v1/acr`, `GET /api/v1/acr/{statusId}`, `POST /api/v1/acr/submit`
+- `GET /api/v1/notifications`, `POST /api/v1/notifications/send`
+- `GET/PUT /api/v1/me`
+
+See the controllers in `backend/src/main/java/gov/nic/apar/controller` for the complete route contract.
