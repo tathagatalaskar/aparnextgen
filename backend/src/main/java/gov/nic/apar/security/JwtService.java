@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 @Service
@@ -41,7 +42,7 @@ public class JwtService {
 
     public boolean isValid(String token, String expectedEmail) {
         try {
-            return extractEmail(token).equals(expectedEmail)
+            return Objects.equals(extractEmail(token), expectedEmail)
                     && !extractClaim(token, Claims::getExpiration).before(new Date());
         } catch (Exception e) {
             return false;
