@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
     context-path: /api
 
@@ -19,10 +19,15 @@ spring:
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:dev_secret_min_256_bits_long_change_this_in_production_2026_abcd}
+    # Required at startup: configure a unique secret (at least 32 bytes) per environment.
+    secret: ${APP_JWT_SECRET}
     expiration-ms: 3600000
   cors:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
+  cron:
+    secret: ${CRON_SECRET:}
+  scheduler:
+    enabled: ${APP_SCHEDULER_ENABLED:true}
 
 logging:
   level:
