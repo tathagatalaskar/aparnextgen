@@ -2,6 +2,7 @@ package gov.nic.apar.service;
 
 import gov.nic.apar.dto.*;
 import gov.nic.apar.entity.*;
+import gov.nic.apar.exception.BadRequestException;
 import gov.nic.apar.exception.ForbiddenException;
 import gov.nic.apar.exception.NotFoundException;
 import gov.nic.apar.repository.*;
@@ -106,6 +107,9 @@ public class AcrService {
         EmployeeAcrStatus s = loadStatus(statusId);
         if (!Boolean.TRUE.equals(s.getIsAcrSubmitted()))
             throw new ForbiddenException("This ACR has not been submitted yet");
+
+        if (req.flagged() && (req.flagReason() == null || req.flagReason().isBlank()))
+            throw new BadRequestException("A flag reason is required when an ACR is flagged");
 
         s.setGrade(req.grade().trim());
         s.setAuthorityRemarks(req.remarks() != null ? req.remarks().trim() : null);
