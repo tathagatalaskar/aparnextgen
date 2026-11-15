@@ -76,7 +76,7 @@ After changing Vercel environment variables, redeploy the frontend so Vite can i
 docker compose up --build
 ```
 
-Open `http://localhost:5173`. The local compose setup loads both SQL files, including demo accounts. The seeded demo password is `Password@123`; never use those accounts or the local fallback secrets in a production deployment.
+Open `http://localhost:5173`. The local compose setup loads all three SQL scripts: schema, reference data, and the local-only demo seed. The seeded demo password is `Password@123`; never use those accounts or the local fallback secrets in a production deployment.
 
 Stop with `Ctrl+C`. Remove local database data with `docker compose down -v`.
 
