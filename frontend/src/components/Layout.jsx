@@ -41,8 +41,8 @@ export default function Layout({ children }) {
               {navBtn('/', 'Dashboard', LayoutDashboard)}
               {isAuthority && navBtn('/directory', 'Employees', Users)}
               {isAuthority && navBtn('/notify', 'Notify', Send)}
-              {!isAuthority && navBtn('/profile', 'My Profile', UserCircle)}
-              {!isAuthority && <NotificationBell />}
+              {navBtn('/profile', 'My Profile', UserCircle)}
+              <NotificationBell />
               <div className="text-right ml-2">
                 <p className="text-sm font-semibold">{user.fullName}</p>
                 <p className="text-[11px] text-white/70 flex items-center gap-1 justify-end">
