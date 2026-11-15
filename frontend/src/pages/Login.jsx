@@ -7,6 +7,7 @@ const DEMO = [
   ['Employee', 'employee@nic.in'],
   ['Authority', 'authority@nic.in'],
 ]
+const SHOW_DEMO_ACCOUNTS = import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true'
 
 export default function Login() {
   const { login } = useAuth()
@@ -20,10 +21,10 @@ export default function Login() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await login(email.trim(), password)
+      await login(email, password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed')
+      setError(err.response?.data?.error || err.message || 'Login failed')
     } finally { setLoading(false) }
   }
 
@@ -58,19 +59,21 @@ export default function Login() {
             className="w-full flex items-center justify-center gap-2 bg-maroon hover:bg-maroon-dark text-white font-semibold py-2.5 rounded transition-colors disabled:opacity-60">
             <LogIn size={16} /> {loading ? 'Signing in…' : 'Sign In'}
           </button>
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[11px] text-gray-400 mb-2">Demo accounts (password: Password@123)</p>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO.map(([label, mail]) => (
-                <button key={mail} type="button"
-                  onClick={() => { setEmail(mail); setPassword('Password@123') }}
-                  className="text-[11px] border border-gray-200 rounded px-2 py-1 hover:bg-gray-50 text-left">
-                  <span className="font-semibold block">{label}</span>
-                  <span className="text-gray-400">{mail}</span>
-                </button>
-              ))}
+          {SHOW_DEMO_ACCOUNTS && (
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-[11px] text-gray-400 mb-2">Demo accounts (password: Password@123)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {DEMO.map(([label, mail]) => (
+                  <button key={mail} type="button"
+                    onClick={() => { setEmail(mail); setPassword('Password@123') }}
+                    className="text-[11px] border border-gray-200 rounded px-2 py-1 hover:bg-gray-50 text-left">
+                    <span className="font-semibold block">{label}</span>
+                    <span className="text-gray-400">{mail}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <p className="text-center text-xs text-gray-500 pt-1">
             New employee? <Link to="/register" className="text-maroon font-semibold">Create an account</Link>
           </p>

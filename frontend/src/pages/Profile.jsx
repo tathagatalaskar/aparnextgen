@@ -80,7 +80,7 @@ export default function Profile() {
           <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Editable Details</p>
           <div className="grid md:grid-cols-2 gap-3 mb-4">
             <div><label className={lbl}>Mobile (10 digits)</label><input className={input} value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} /></div>
-            <div><label className={lbl}>Email</label><input type="email" className={input} value={form.email} onChange={(e) => set('email', e.target.value)} /></div>
+            <div><label className={lbl}>Contact Email (login unchanged)</label><input type="email" className={input} value={form.email} onChange={(e) => set('email', e.target.value)} /></div>
             <div className="md:col-span-2"><label className={lbl}>Designation</label><input className={input} value={form.designation} onChange={(e) => set('designation', e.target.value)} /></div>
           </div>
 

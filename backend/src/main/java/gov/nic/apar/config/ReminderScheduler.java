@@ -14,8 +14,8 @@ public class ReminderScheduler {
 
     private final NotificationService notificationService;
 
-    // Every day at 09:00 server time
-    @Scheduled(cron = "0 0 9 * * *")
+    // Runs at 09:00 Indian Standard Time, regardless of the hosting region.
+    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Kolkata")
     public void dailyReminderSweep() {
         int created = notificationService.generateAutoReminders();
         if (created > 0) log.info("APAR auto-reminders generated: {}", created);

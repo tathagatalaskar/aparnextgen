@@ -6,7 +6,7 @@
 SET client_min_messages TO WARNING;
 
 -- Faculty instruction: create schema first
-CREATE SCHEMA IF NOT EXISTS tran AUTHORIZATION apar_admin;
+CREATE SCHEMA IF NOT EXISTS tran;
 
 -- Sequence for new employee IDs (self-registration / authority-added).
 -- Starts above the seeded 81xxx demo IDs to avoid collisions.
@@ -138,6 +138,10 @@ CREATE TABLE tran.acr_cycle (
     due_date         date NOT NULL,
     is_open          boolean NOT NULL DEFAULT TRUE
 );
+-- The application assumes one active reporting cycle at a time.
+CREATE UNIQUE INDEX uq_acr_cycle_single_open
+    ON tran.acr_cycle (is_open)
+    WHERE is_open = TRUE;
 
 -- ───────────────────────────────────────────────────────────────────────
 -- NOTIFICATION  (manual messages + automatic APAR reminders + announcements)

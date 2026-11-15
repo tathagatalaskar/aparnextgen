@@ -4,6 +4,8 @@ import { acrApi } from '../api/api'
 import Layout from '../components/Layout'
 import { Send, Plus, Trash2, ArrowLeft, AlertCircle, Lock } from 'lucide-react'
 
+const MAX_TARGETS = 15
+
 export default function SubmitAcr() {
   const navigate = useNavigate()
   const [elig, setElig] = useState(null)
@@ -77,10 +79,14 @@ export default function SubmitAcr() {
           </div>
         )}
 
-        <div className="mb-2 flex items-center justify-between">
-          <label className="text-xs font-semibold uppercase text-gray-600">Targets &amp; Achievements *</label>
-          <button type="button" onClick={() => setTargets((ts) => [...ts, { target: '', achievements: '' }])}
-            className="flex items-center gap-1 text-xs font-semibold text-maroon">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <label className="text-xs font-semibold uppercase text-gray-600">Targets &amp; Achievements *</label>
+            <p className="text-[11px] text-gray-400 mt-0.5">{targets.length} of {MAX_TARGETS} rows</p>
+          </div>
+          <button type="button" disabled={targets.length >= MAX_TARGETS}
+            onClick={() => setTargets((ts) => ts.length < MAX_TARGETS ? [...ts, { target: '', achievements: '' }] : ts)}
+            className="flex items-center gap-1 text-xs font-semibold text-maroon disabled:opacity-40">
             <Plus size={14} /> Add Row
           </button>
         </div>
@@ -96,11 +102,11 @@ export default function SubmitAcr() {
             {targets.map((t, i) => (
               <tr key={i}>
                 <td className="px-3 py-2">
-                  <input className={`${input} text-xs`} placeholder="Target set for the year"
+                  <input maxLength={2000} className={`${input} text-xs`} placeholder="Target set for the year"
                     value={t.target} onChange={(e) => setTarget(i, 'target', e.target.value)} />
                 </td>
                 <td className="px-3 py-2">
-                  <input className={`${input} text-xs`} placeholder="What you achieved"
+                  <input maxLength={2000} className={`${input} text-xs`} placeholder="What you achieved"
                     value={t.achievements} onChange={(e) => setTarget(i, 'achievements', e.target.value)} />
                 </td>
                 <td className="px-3 py-2 text-center">

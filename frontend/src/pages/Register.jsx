@@ -6,6 +6,7 @@ import { FileText, UserPlus, AlertCircle, CheckCircle } from 'lucide-react'
 export default function Register() {
   const navigate = useNavigate()
   const [depts, setDepts] = useState([])
+  const [departmentsError, setDepartmentsError] = useState('')
   const [form, setForm] = useState({
     empIniName: 'Shri', empFirstName: '', empMidName: '', empLastName: '',
     gender: 'M', dateOfBirth: '', departmentId: '', designation: '',
@@ -16,7 +17,13 @@ export default function Register() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    metaApi.departments().then(({ data }) => setDepts(data)).catch(() => {})
+    let active = true
+    metaApi.departments()
+      .then(({ data }) => { if (active) setDepts(Array.isArray(data) ? data : []) })
+      .catch((e) => {
+        if (active) setDepartmentsError(e.response?.data?.error || 'Unable to load departments. Check the API connection and refresh this page.')
+      })
+    return () => { active = false }
   }, [])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -35,7 +42,7 @@ export default function Register() {
         designation: form.designation || null,
         mobileNumber: form.mobileNumber || null,
       })
-      setOk('Registration successful! Redirecting to login…')
+      setOk('Registration submitted and awaiting authority approval. You can sign in after activation. Redirecting to login…')
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
       const data = err.response?.data
@@ -57,6 +64,11 @@ export default function Register() {
           </div>
         </div>
         <form onSubmit={submit} className="bg-white shadow-md rounded-b-lg px-8 py-6">
+          {departmentsError && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-4">
+              <AlertCircle size={16} /> {departmentsError}
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-4">
               <AlertCircle size={16} /> {error}
@@ -122,7 +134,7 @@ export default function Register() {
             </div>
           </div>
 
-          <button type="submit" disabled={busy}
+          <button type="submit" disabled={busy || departmentsError !== '' || depts.length === 0}
             className="mt-5 w-full flex items-center justify-center gap-2 bg-maroon hover:bg-maroon-dark text-white font-semibold py-2.5 rounded transition-colors disabled:opacity-60">
             <UserPlus size={16} /> {busy ? 'Creating account…' : 'Register'}
           </button>

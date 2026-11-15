@@ -1,7 +1,8 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
     context-path: /api
+  forward-headers-strategy: framework
 
 spring:
   datasource:
@@ -19,8 +20,9 @@ spring:
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:dev_secret_min_256_bits_long_change_this_in_production_2026_abcd}
-    expiration-ms: 3600000
+    # No production fallback: configure a unique random secret in the backend host.
+    secret: ${APP_JWT_SECRET}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:3600000}
   cors:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
 

@@ -3,6 +3,7 @@ package gov.nic.apar.service;
 import gov.nic.apar.dto.*;
 import gov.nic.apar.entity.*;
 import gov.nic.apar.exception.ForbiddenException;
+import gov.nic.apar.exception.BadRequestException;
 import gov.nic.apar.exception.NotFoundException;
 import gov.nic.apar.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,9 @@ public class AcrService {
             throw new ForbiddenException("You have already submitted your APAR for this cycle");
 
         String year = elig.assessmentYear();
+        if (!year.equals(req.assessmentYear())) {
+            throw new BadRequestException("The APAR cycle has changed. Refresh the page and submit again.");
+        }
         EmployeeDetails emp = employeeRepository.findByEmployeeId(empId)
                 .orElseThrow(() -> new NotFoundException("Employee record not found"));
 
@@ -106,6 +110,10 @@ public class AcrService {
         EmployeeAcrStatus s = loadStatus(statusId);
         if (!Boolean.TRUE.equals(s.getIsAcrSubmitted()))
             throw new ForbiddenException("This ACR has not been submitted yet");
+
+        if (req.flagged() && (req.flagReason() == null || req.flagReason().isBlank())) {
+            throw new BadRequestException("A reason is required when an ACR is flagged");
+        }
 
         s.setGrade(req.grade().trim());
         s.setAuthorityRemarks(req.remarks() != null ? req.remarks().trim() : null);

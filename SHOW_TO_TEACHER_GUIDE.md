@@ -6,8 +6,9 @@ This version uses your faculty's exact `tran` schema design.
 
 > **NOTE:** This build adds employee **self-registration** and an Authority **Add / Manage
 > Employees** portal, and new columns (designation, joining date, email, active flag).
-> Because the database schema changed, the FIRST time you run it you must wipe the old
-> volume: `docker compose down -v` then `docker compose up --build`.
+> For a fresh local database, run `docker compose up --build`. The command
+> `docker compose down -v` permanently deletes the local PostgreSQL data volume; use it
+> only when you deliberately want to erase local demo data. Back up any data you need first.
 
 # PART 1 — Run it
 
@@ -18,8 +19,9 @@ This version uses your faculty's exact `tran` schema design.
    ```
 3. Open **http://localhost:5173**.
 
-Demo logins (password `Password@123`): `employee@nic.in`, `authority@nic.in`
-(use the buttons on the login screen).
+Demo logins (password `Password@123`): `employee@nic.in`, `authority@nic.in`.
+The local Docker Compose build enables the demo-account buttons on the login screen.
+These accounts are for local demonstrations only and must never be used in production.
 
 > If port 5432/8080 is busy, an old project is still running. Run `docker ps`,
 > then `docker stop <name>` and `docker rm <name>` on the old containers.
@@ -56,12 +58,15 @@ you grade (Outstanding → Below Average), add remarks, and can **flag** it. Sav
 4. **Save Review** → status becomes **Reviewed**.
 
 ### New: Register a brand-new employee
-On the login screen click **Create an account**, fill the form, and register — then log in
-with that new account immediately. (No hardcoded users needed.)
+On the login screen click **Create an account**, fill the form, and submit it. The account
+is created as inactive and waits for approval. Sign in as the Authority, open **Employees**,
+find the new employee and activate the account with the power button. The employee can
+sign in only after activation.
 
 ### New: Authority adds / manages employees
 As the Authority, open **Employees** in the top nav → **Add Employee** to create a record
-(optionally with a login), and use the power button to **activate/deactivate** anyone.
+(optionally with a login), and use the power button to **activate/deactivate** accounts.
+Pending self-registrations appear as inactive until approved.
 
 ### Back as the Employee
 Log in again, open your ACR — you now see the grade, remarks, and any flag.

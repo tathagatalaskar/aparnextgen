@@ -45,7 +45,7 @@ public class SecurityConfig {
             .csrf(c -> c.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login", "/auth/register", "/v1/meta/**").permitAll()
+                .requestMatchers("/health", "/auth/login", "/auth/register", "/v1/meta/**").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -77,10 +77,20 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsSource() {
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .distinct()
+                .toList();
+        if (origins.isEmpty()) {
+            throw new IllegalStateException("APP_CORS_ORIGINS must contain at least one allowed frontend origin.");
+        }
+
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        cfg.setAllowedOrigins(origins);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Content-Type", "Authorization"));
+        cfg.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
         return src;
