@@ -13,6 +13,8 @@ export default function Notify() {
   const [employees, setEmployees] = useState([])
   const [depts, setDepts] = useState([])
   const [pending, setPending] = useState([])
+  const [pendingLoading, setPendingLoading] = useState(true)
+  const [pendingError, setPendingError] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -26,8 +28,18 @@ export default function Notify() {
 
   const flash = (m) => { setNotice(m); setTimeout(() => setNotice(''), 4000) }
 
-  const loadPending = useCallback(() => {
-    notificationApi.pending().then(({ data }) => setPending(data)).catch(() => {})
+  const loadPending = useCallback(async () => {
+    setPendingLoading(true)
+    setPendingError('')
+    try {
+      const { data } = await notificationApi.pending()
+      setPending(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setPending([])
+      setPendingError(e.response?.data?.error || 'Could not load pending APAR reports.')
+    } finally {
+      setPendingLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -39,7 +51,8 @@ export default function Notify() {
   const sendManual = async () => {
     setError('')
     if (!title.trim() || !message.trim()) { setError('Title and message are required.'); return }
-    if ((targetType === 'ONE' || targetType === 'MANY') && employeeIds.length === 0) {
+    const selectedEmployeeIds = employeeIds.filter((id) => String(id).trim() !== '')
+    if ((targetType === 'ONE' || targetType === 'MANY') && selectedEmployeeIds.length === 0) {
       setError('Select at least one employee.'); return
     }
     if (targetType === 'DEPARTMENT' && !departmentId) { setError('Select a department.'); return }
@@ -47,7 +60,7 @@ export default function Notify() {
     try {
       const { data } = await notificationApi.send({
         targetType,
-        employeeIds: employeeIds.map(Number),
+        employeeIds: selectedEmployeeIds.map(Number),
         departmentId: departmentId ? Number(departmentId) : null,
         title: title.trim(), message: message.trim(),
       })
@@ -120,7 +133,7 @@ export default function Notify() {
               <select multiple={targetType === 'MANY'} className={`${input} h-40`}
                 value={targetType === 'ONE' ? employeeIds[0] || '' : employeeIds}
                 onChange={(e) => {
-                  if (targetType === 'ONE') setEmployeeIds([e.target.value])
+                  if (targetType === 'ONE') setEmployeeIds(e.target.value ? [e.target.value] : [])
                   else setEmployeeIds(Array.from(e.target.selectedOptions, (o) => o.value))
                 }}>
                 {targetType === 'ONE' && <option value="">— Select —</option>}
@@ -160,7 +173,11 @@ export default function Notify() {
             </button>
           </div>
 
-          {pending.length === 0 ? (
+          {pendingLoading ? (
+            <p className="text-sm text-gray-400 py-6 text-center">Loading pending reports…</p>
+          ) : pendingError ? (
+            <p className="text-sm text-red-600 py-6 text-center">{pendingError}</p>
+          ) : pending.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">Everyone has submitted. 🎉</p>
           ) : (
             <>

@@ -107,6 +107,9 @@ public class NotificationService {
     @Transactional
     public MessageResponse sendReminders(List<Long> employeeIds, Long senderId) {
         AcrCycle cycle = currentCycle();
+        if (todayInIndia().isAfter(cycle.getDueDate())) {
+            throw new BadRequestException("The APAR submission deadline for this cycle has passed.");
+        }
         if (employeeIds == null || employeeIds.isEmpty())
             throw new BadRequestException("Select at least one employee");
 
@@ -138,7 +141,9 @@ public class NotificationService {
         Optional<AcrCycle> open = cycleRepository.findFirstByIsOpenTrueOrderByDueDateDesc();
         if (open.isEmpty()) return 0;
         AcrCycle cycle = open.get();
-        if (LocalDate.now(ZoneId.of("Asia/Kolkata")).isBefore(cycle.getDueDate().minusDays(REMINDER_LEAD_DAYS))) return 0;
+        LocalDate today = todayInIndia();
+        if (today.isAfter(cycle.getDueDate())
+                || today.isBefore(cycle.getDueDate().minusDays(REMINDER_LEAD_DAYS))) return 0;
 
         Set<Long> withLogin = employeeLoginIds();
         int created = 0;
@@ -193,8 +198,10 @@ public class NotificationService {
         boolean submitted = statusRepository
                 .findByEmployeeIdAndAssessmentYear(employeeId, cycle.getAssessmentYear())
                 .map(s -> Boolean.TRUE.equals(s.getIsAcrSubmitted())).orElse(false);
-        boolean canSubmit = Boolean.TRUE.equals(cycle.getIsOpen()) && reminded && !submitted;
-        return new SubmitEligibilityView(Boolean.TRUE.equals(cycle.getIsOpen()),
+        boolean cycleOpen = Boolean.TRUE.equals(cycle.getIsOpen())
+                && !todayInIndia().isAfter(cycle.getDueDate());
+        boolean canSubmit = cycleOpen && reminded && !submitted;
+        return new SubmitEligibilityView(cycleOpen,
                 cycle.getAssessmentYear(), cycle.getDueDate(), reminded, submitted, canSubmit);
     }
 
@@ -213,6 +220,10 @@ public class NotificationService {
                         && activeDirectoryEmployees.contains(a.getEmployeeId()))
                 .map(UserAccount::getEmployeeId)
                 .collect(Collectors.toSet());
+    }
+
+    private LocalDate todayInIndia() {
+        return LocalDate.now(ZoneId.of("Asia/Kolkata"));
     }
 
     private Map<Long, String> nameMap() {

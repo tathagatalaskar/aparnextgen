@@ -11,10 +11,12 @@ import gov.nic.apar.repository.*;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
@@ -32,7 +34,7 @@ class NotificationServiceTest {
 
         when(cycles.findFirstByIsOpenTrueOrderByDueDateDesc()).thenReturn(Optional.of(
                 AcrCycle.builder().assessmentYear("2025-2026")
-                        .dueDate(LocalDate.now().plusDays(7)).isOpen(true).build()));
+                        .dueDate(LocalDate.now(ZoneId.of("Asia/Kolkata")).plusDays(7)).isOpen(true).build()));
         when(accounts.findAll()).thenReturn(List.of(
                 UserAccount.builder().employeeId(11L).role(Role.EMPLOYEE).isActive(true).build(),
                 UserAccount.builder().employeeId(12L).role(Role.EMPLOYEE).isActive(false).build(),
@@ -64,7 +66,7 @@ class NotificationServiceTest {
 
         when(cycles.findFirstByIsOpenTrueOrderByDueDateDesc()).thenReturn(Optional.of(
                 AcrCycle.builder().assessmentYear("2025-2026")
-                        .dueDate(LocalDate.now().plusDays(7)).isOpen(true).build()));
+                        .dueDate(LocalDate.now(ZoneId.of("Asia/Kolkata")).plusDays(7)).isOpen(true).build()));
         when(accounts.findAll()).thenReturn(List.of(
                 UserAccount.builder().employeeId(12L).role(Role.EMPLOYEE).isActive(false).build()));
         when(employees.findByIsActiveTrue()).thenReturn(List.of(
@@ -78,6 +80,50 @@ class NotificationServiceTest {
         verify(employees, times(1)).findByIsActiveTrue();
     }
     @Test
+    void manualRemindersAreRejectedAfterTheCycleDeadline() {
+        NotificationRepository notifications = mock(NotificationRepository.class);
+        EmployeeDetailsRepository employees = mock(EmployeeDetailsRepository.class);
+        UserAccountRepository accounts = mock(UserAccountRepository.class);
+        EmployeeAcrStatusRepository statuses = mock(EmployeeAcrStatusRepository.class);
+        AcrCycleRepository cycles = mock(AcrCycleRepository.class);
+        LookupService lookup = mock(LookupService.class);
+
+        when(cycles.findFirstByIsOpenTrueOrderByDueDateDesc()).thenReturn(Optional.of(
+                AcrCycle.builder().assessmentYear("2026-2027")
+                        .dueDate(LocalDate.now(ZoneId.of("Asia/Kolkata")).minusDays(1)).isOpen(true).build()));
+
+        NotificationService service = new NotificationService(
+                notifications, employees, accounts, statuses, cycles, lookup);
+
+        assertThrows(BadRequestException.class, () -> service.sendReminders(List.of(11L), 99L));
+        verify(notifications, never()).save(any());
+        verifyNoInteractions(accounts, employees);
+    }
+
+    @Test
+    void eligibilityClosesTheCycleAfterItsDueDateEvenIfTheDatabaseFlagIsStillOpen() {
+        NotificationRepository notifications = mock(NotificationRepository.class);
+        EmployeeDetailsRepository employees = mock(EmployeeDetailsRepository.class);
+        UserAccountRepository accounts = mock(UserAccountRepository.class);
+        EmployeeAcrStatusRepository statuses = mock(EmployeeAcrStatusRepository.class);
+        AcrCycleRepository cycles = mock(AcrCycleRepository.class);
+        LookupService lookup = mock(LookupService.class);
+
+        when(cycles.findFirstByIsOpenTrueOrderByDueDateDesc()).thenReturn(Optional.of(
+                AcrCycle.builder().assessmentYear("2026-2027")
+                        .dueDate(LocalDate.now(ZoneId.of("Asia/Kolkata")).minusDays(1)).isOpen(true).build()));
+        when(notifications.existsByRecipientEmployeeIdAndTypeAndAssessmentYear(
+                11L, "APAR_REMINDER", "2026-2027")).thenReturn(true);
+
+        NotificationService service = new NotificationService(
+                notifications, employees, accounts, statuses, cycles, lookup);
+
+        var eligibility = service.eligibility(11L);
+        assertFalse(eligibility.cycleOpen());
+        assertFalse(eligibility.canSubmit());
+    }
+
+    @Test
     void remindersAreNotSentToEmployeesWhoAlreadySubmitted() {
         NotificationRepository notifications = mock(NotificationRepository.class);
         EmployeeDetailsRepository employees = mock(EmployeeDetailsRepository.class);
@@ -88,7 +134,7 @@ class NotificationServiceTest {
 
         when(cycles.findFirstByIsOpenTrueOrderByDueDateDesc()).thenReturn(Optional.of(
                 AcrCycle.builder().assessmentYear("2025-2026")
-                        .dueDate(LocalDate.now().plusDays(7)).isOpen(true).build()));
+                        .dueDate(LocalDate.now(ZoneId.of("Asia/Kolkata")).plusDays(7)).isOpen(true).build()));
         when(accounts.findAll()).thenReturn(List.of(
                 UserAccount.builder().employeeId(11L).role(Role.EMPLOYEE).isActive(true).build()));
         when(employees.findByIsActiveTrue()).thenReturn(List.of(

@@ -59,14 +59,14 @@ The backend URL must be publicly reachable over HTTPS. Its API base path is `/ap
 
 1. Import this GitHub repository into Vercel.
 2. Set **Root Directory** to the repository root (`.`). The root `vercel.json` installs and builds the Vite app inside `frontend`.
-3. The Vercel config sets the install command, build command, output directory (`frontend/dist`), and SPA rewrite automatically. Do not override them unless you intentionally set Root Directory to `frontend`.
+3. Keep the build settings from the root `vercel.json`: install command `npm ci --prefix frontend`, build command `npm --prefix frontend run build`, output directory `frontend/dist`, and the SPA rewrite. Do not override these unless you intentionally set Root Directory to `frontend`.
 
 Alternatively, you can set **Root Directory** to `frontend`; in that case use `npm run build` as the build command and `dist` as the output directory.
-4. Add the environment variable `VITE_API_BASE_URL` with the backend's public URL ending in `/api`.
-5. Keep `VITE_SHOW_DEMO_ACCOUNTS` unset or set it to `false`.
-6. Deploy, then add the exact Vercel production URL to the backend's `APP_CORS_ORIGINS`.
+4. Add `VITE_API_BASE_URL` with the real, public backend URL ending in `/api`. Add it to both Preview and Production environments. The production build intentionally fails when this value is missing.
+5. Set `VITE_SHOW_DEMO_ACCOUNTS=false` for Preview and Production.
+6. Deploy, then add the exact Vercel production URL (and any preview URL you intend to test) to the backend's `APP_CORS_ORIGINS`.
 
-The Vercel rewrite in `frontend/vercel.json` routes direct visits to React Router pages (for example `/register` and `/acr/123`) back to `index.html`.
+The Vercel rewrite in `frontend/vercel.json` routes direct visits to React Router pages (for example `/register` and `/acr/123`) back to `index.html`. Vercel hosts the React frontend only; deploy the Java API using `backend/Dockerfile` on a Java-capable container host. Its readiness endpoint is `/api/health`.
 
 After changing Vercel environment variables, redeploy the frontend so Vite can include the new value in its build.
 

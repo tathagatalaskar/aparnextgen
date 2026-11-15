@@ -12,7 +12,7 @@ public class EmployeeDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emp_id_gen")
-    @SequenceGenerator(name = "emp_id_gen", sequenceName = "employee_id_seq", allocationSize = 1)
+    @SequenceGenerator(name = "emp_id_gen", sequenceName = "employee_id_seq", schema = "tran", allocationSize = 1)
     @Column(name = "employee_id")
     private Long employeeId;
 
@@ -38,7 +38,7 @@ public class EmployeeDetails {
     private String empLastName;
 
     @Column(length = 1)
-    private String gender;   // 'M' or 'F'
+    private String gender;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
