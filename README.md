@@ -1,115 +1,198 @@
 # APAR / ACR Management System — NIC Tripura
 
-A secure full-stack Annual Performance Assessment Report (APAR / ACR) system built on the
-**NIC SPARROW table design** (schema `tran`). Employees fill their self-appraisal
-(targets & achievements); a single **Reporting Authority** reviews every ACR, grades it,
-adds remarks, and can flag it. The authority also has a full **employee directory**.
+A full-stack Annual Performance Assessment Report (APAR / ACR) portal. Employees maintain self-appraisal targets and achievements, while reporting authorities review submissions, assign grades, add remarks, flag records, manage employees, and send notifications.
 
-**Stack:** React (Vite) + Tailwind · Spring Boot 3 (Java 17) · PostgreSQL 16 (schema `tran`) · JWT · Docker
+**Stack:** React 18 · Vite · Tailwind CSS · Spring Boot 3 · Java 17 · PostgreSQL 16 · Spring Security · JWT · Docker
 
----
+## Features
 
-## Database design (schema `tran`)
+### Employee
+- Register and sign in with an employee account.
+- View their own ACR submissions and assessment status.
+- Submit targets and achievements after an authority reminder unlocks the current cycle.
+- View and update contact details.
+- Receive APAR reminders, announcements, and notifications.
 
-Built directly on the faculty-provided NIC table design:
+### Reporting authority
+- View submitted ACRs across employees.
+- Review ACRs, assign grades, add remarks, and flag records with a reason.
+- Add, edit, activate/deactivate, and remove employee records.
+- Send notifications to an employee, selected employees, a department, or all active employees.
+- Send APAR reminders and inspect pending submissions.
 
-| Table | Purpose |
-|-------|---------|
-| `tran.employee_details` | Master roll of officers — ID, name parts, gender (M/F), DOB, mobile |
-| `tran.employee_acr_status` | One row per employee per year — submission status + grade/remarks/flag |
-| `tran.employee_acr_details` | Target / achievement rows of each ACR |
-| `tran.user_account` | Login credentials (email + BCrypt password + role), linked to an employee |
-| `tran.organization` / `tran.office` / `tran.department` | Lookup/master data for the IDs |
+### Security
+- Stateless JWT authentication and BCrypt password hashing.
+- Employee-only access to their own ACR and notification records.
+- Server-side authority checks for administrative actions.
+- Validation on incoming request DTOs.
+- Production JWT secrets are required; no default signing secret is used.
 
----
+## Repository layout
 
-## Two roles
+```text
+.
+├── backend/                 # Spring Boot REST API
+│   ├── Dockerfile           # Local Docker image
+│   ├── Dockerfile.vercel    # Vercel Container service
+│   └── src/
+├── frontend/                # React + Vite SPA
+│   ├── src/
+│   └── vercel.json          # Client-side route fallback
+├── db/init/
+│   ├── 01_schema.sql        # PostgreSQL schema (tran)
+│   ├── 02_seed.sql          # Local/demo data only
+│   └── 03_reference_data.sql# Production lookup data
+├── .github/workflows/ci.yml # Frontend + backend build checks
+├── docker-compose.yml
+└── vercel.json              # Frontend/backend routing + daily cron
+```
 
-| Role | Can do |
-|------|--------|
-| **Employee** | **Self-register**, log in, submit ACR (targets/achievements), view own ACRs + grades |
-| **Authority** | View all submitted ACRs, grade + remark + flag, **add / edit / activate-deactivate employees**, browse directory |
+## Deploy the complete application on Vercel
 
-New employees can **register themselves**; the Authority can **add / edit / delete /
-activate / deactivate** employees. Every flag, activation, deactivation and assessment
-**notifies the employee**.
+This repository is configured for one Vercel deployment using two Vercel Services: the Vite static frontend and the Spring Boot Docker container backend. Both are exposed through one domain: the browser uses `/api/*` for the API, and all other paths are routed to the React app.
 
-### APAR workflow (gated)
-The APAR form is **locked by default**. The Authority selects employees and **sends an APAR
-reminder**, which **unlocks the form for that employee in near-real-time** (the portal polls
-every ~10s). Automatic reminders are also generated daily for anyone who hasn't submitted by
-the due window. Each employee only ever sees **their own** notifications and reminders.
+### 1. Create the PostgreSQL database
 
-### Notification centre
-Every user has a **bell with an unread badge** and a dropdown notification centre. The
-Authority can send **manual notifications** to one / many / a department / or all employees.
+Create a managed PostgreSQL database that is reachable from Vercel. Keep its host, database name, username, and password handy.
 
-Employees only see their own ACRs; cross-access is blocked server-side (403).
+Run these SQL files in order using the provider's SQL editor or `psql`:
 
----
+1. `db/init/01_schema.sql`
+2. `db/init/03_reference_data.sql`
 
-## Demo accounts (password: `Password@123`)
+Do **not** run `02_seed.sql` against a production database. It creates demonstration accounts with a publicly documented sample password. The production reference-data script creates the organization, office, and departments needed by employee registration without inserting demo users.
 
-| Role | Email | Employee |
-|------|-------|----------|
-| Authority | authority@nic.in | Smt Anita Sharma (ID 81848) |
-| Employee | employee@nic.in | Shri Tathagata Laskar (ID 81851) |
-| Employee | priya@nic.in | Smt Priya Menon (ID 81853) — has a sample ACR ready |
+### 2. Import the GitHub repository into Vercel
 
----
+Import `tathagatalaskar/aparnextgen` from the Vercel dashboard.
 
-## Run it (Docker)
+In **Project Settings → Build and Deployment**, set the Framework Preset to **Services**. The repository's root `vercel.json` declares:
+- `frontend`: Vite application rooted at `frontend/`.
+- `backend`: Container runtime rooted at `backend/`, built from `Dockerfile.vercel`.
+- `/api/*` routed to Spring Boot and other requests routed to the frontend.
+
+Vercel Services and the Container runtime are currently in beta. If the Services framework preset or container deployment is not enabled for your account, deploy the frontend and backend as separate projects or use a Java container host for the backend.
+
+### 3. Add backend environment variables
+
+Add the following variables to the **backend service's** production environment in Vercel. Use the database provider's actual connection information.
+
+| Variable | Value |
+|---|---|
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://HOST:PORT/DATABASE?sslmode=require` (use the provider's SSL settings) |
+| `SPRING_DATASOURCE_USERNAME` | Managed PostgreSQL username |
+| `SPRING_DATASOURCE_PASSWORD` | Managed PostgreSQL password |
+| `APP_JWT_SECRET` | A unique random secret, at least 32 bytes |
+| `CRON_SECRET` | A separate long random secret for the scheduled reminder endpoint |
+| `APP_SCHEDULER_ENABLED` | `false` |
+
+Generate secrets locally with `openssl rand -base64 48`. Do not commit the generated values or share them in screenshots. `APP_CORS_ORIGINS` can be set to a comma-separated allowlist when you intentionally call the API from a different origin; same-domain Vercel routing does not require a cross-origin browser request.
+
+### 4. Provision the first reporting authority
+
+After the first deployment is ready and the database is connected:
+
+1. Open your deployed application's `/register` page and create the first account using the real authority's details.
+2. Using an administrator connection to the database, promote that account:
+
+   ```sql
+   UPDATE tran.user_account
+   SET role = 'AUTHORITY'
+   WHERE email = LOWER('authority@example.com');
+   ```
+
+3. Sign out and sign back in so the newly issued JWT contains the authority role.
+
+The registration endpoint creates an `EMPLOYEE` account by design. Only someone with database administration access should perform the promotion. Authorities can then add other employees and manage the assessment cycle. Configure an open row in `tran.acr_cycle` for the assessment year and due date before enabling submissions.
+
+### 5. Daily APAR reminders
+
+The root `vercel.json` schedules `/api/v1/cron/reminders` daily at 03:30 UTC (09:00 India Standard Time). Vercel sends `Authorization: Bearer <CRON_SECRET>`; the backend rejects requests if the secret is missing or does not match.
+
+Vercel Cron runs on production deployments. The backend in-process scheduler is disabled with `APP_SCHEDULER_ENABLED=false` because a scale-to-zero container should not be relied on to run continuously.
+
+### 6. Verify after deployment
+
+- Open the Vercel production URL and confirm the login page loads.
+- Refresh a nested route such as `/register` or `/profile`; the SPA fallback should return the app.
+- Register an employee and confirm the department list populates.
+- Sign in with the provisioned authority account; verify directory, notification, and review actions.
+- Send a reminder to a test employee; confirm the employee can then submit an ACR.
+- Review Vercel deployment/build logs and the backend service logs if any request fails.
+
+## Run locally with Docker
+
+1. Copy `.env.example` to `.env`.
+2. Replace the sample values with unique local secrets (at least 32 bytes for `JWT_SECRET`).
+3. Start the application:
 
 ```bash
 docker compose up --build
 ```
-Open **http://localhost:5173**. Schema + demo data load automatically.
-Stop: `Ctrl+C`. Wipe DB: `docker compose down -v`.
 
----
+Open http://localhost:5173. PostgreSQL initializes the schema, demo data, and reference data on the first database volume creation. The local demo accounts in `db/init/02_seed.sql` all use `Password@123`; use them only in a local/demo environment.
 
-## Run it (manual)
+Stop with `Ctrl+C`. To remove the local database volume and re-run initialization, use:
 
 ```bash
-createdb apar_db
-psql -d apar_db -f db/init/01_schema.sql
-psql -d apar_db -f db/init/02_seed.sql
-cd backend && mvn spring-boot:run     # needs Java 17 + Maven
-cd frontend && npm install && npm run dev   # needs Node 20
+docker compose down -v
 ```
 
----
+## Run locally without Docker
 
-## API endpoints
+Requirements: Java 17, Maven, Node.js 20+, and PostgreSQL 16.
 
-| Method | Path | Role | Purpose |
-|--------|------|------|---------|
-| POST | `/api/auth/login` | public | Get JWT |
-| POST | `/api/auth/register` | public | Self-register a new employee |
-| GET | `/api/v1/meta/departments` | public | Department list (for the register form) |
-| GET | `/api/v1/employees` | Authority | List/manage employees |
-| POST | `/api/v1/employees` | Authority | Add an employee |
-| PUT | `/api/v1/employees/{id}` | Authority | Edit an employee |
-| PATCH | `/api/v1/employees/{id}/active?active=` | Authority | Activate / deactivate |
-| DELETE | `/api/v1/employees/{id}` | Authority | Delete an employee |
-| GET | `/api/v1/acr/eligibility` | Employee | Is the APAR form unlocked? |
-| GET | `/api/v1/notifications` | any | Own notification centre |
-| GET | `/api/v1/notifications/unread-count` | any | Unread badge count |
-| PATCH | `/api/v1/notifications/{id}/read` | any | Mark read |
-| POST | `/api/v1/notifications/send` | Authority | Manual notification (one/many/dept/all) |
-| POST | `/api/v1/notifications/reminders` | Authority | Send APAR reminders (unlocks forms) |
-| GET | `/api/v1/notifications/pending` | Authority | Who hasn't submitted |
-| GET / PUT | `/api/v1/me` | Employee | View / edit own profile |
-| GET | `/api/v1/acr` | any | List ACRs (own / all) |
-| GET | `/api/v1/acr/{statusId}` | any | One ACR detail |
-| POST | `/api/v1/acr/submit` | Employee | Submit ACR |
-| PUT | `/api/v1/acr/{statusId}/review` | Authority | Grade / remark / flag |
-| GET | `/api/v1/acr/employees` | Authority | Employee directory |
+1. Create a PostgreSQL database and execute `01_schema.sql`, `02_seed.sql`, and `03_reference_data.sql` in order for a demo environment.
+2. Set the backend environment:
 
----
+```bash
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/apar_db
+export SPRING_DATASOURCE_USERNAME=apar_admin
+export SPRING_DATASOURCE_PASSWORD=your-local-db-password
+export APP_JWT_SECRET="$(openssl rand -base64 48)"
+```
 
-## Security
-JWT stateless auth · BCrypt passwords · CORS whitelist · server-side `@Valid` validation ·
-SQL-injection-safe (JPA parameter binding) · role checks in the service layer ·
-security headers (X-Frame-Options, nosniff). Login is separated from HR master data
-(`user_account` vs `employee_details`) — government best practice.
+3. Start Spring Boot:
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+4. In a second terminal, start Vite:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Vite proxies `/api` requests to `http://localhost:8080`. The frontend's default API base is `/api`, so the same client code works locally and behind Vercel's same-domain rewrite.
+
+## API overview
+
+All routes below are prefixed by `/api`.
+
+| Method | Path | Access |
+|---|---|---|
+| POST | `/auth/login` | Public |
+| POST | `/auth/register` | Public (creates EMPLOYEE role) |
+| GET | `/v1/meta/departments` | Public reference data |
+| GET | `/v1/meta/offices` | Public reference data |
+| GET / PUT | `/v1/me` | Authenticated user's profile |
+| GET | `/v1/acr` | Authenticated; own reports or all reports for authority |
+| GET | `/v1/acr/eligibility` | Employee |
+| GET | `/v1/acr/{statusId}` | Owner or authority |
+| POST | `/v1/acr/submit` | Employee, after reminder |
+| PUT | `/v1/acr/{statusId}/review` | Authority |
+| GET / POST / PUT / PATCH / DELETE | `/v1/employees...` | Authority |
+| GET / PATCH | `/v1/notifications...` | Authenticated user's own notifications |
+| POST | `/v1/notifications/send` | Authority |
+| POST | `/v1/notifications/reminders` | Authority |
+| POST | `/v1/notifications/reminders/auto` | Authority |
+| GET | `/v1/notifications/pending` | Authority |
+| GET | `/v1/cron/reminders` | Vercel Cron secret only |
+
+## Continuous integration
+
+GitHub Actions runs a clean frontend dependency install and Vite production build, plus Maven verification on Java 17, for pushes and pull requests. A green CI build verifies compilation and bundling; it does not replace testing with a live PostgreSQL instance, real user credentials, or a deployed Vercel preview.
