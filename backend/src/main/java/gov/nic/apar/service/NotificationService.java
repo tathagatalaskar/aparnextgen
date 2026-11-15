@@ -116,8 +116,10 @@ public class NotificationService {
 
         for (Long eid : selected) {
             if (!activeEmployeeAccounts.contains(eid)) continue;
-            EmployeeDetails emp = employeeRepository.findByEmployeeId(eid).orElse(null);
-            if (emp == null || !Boolean.TRUE.equals(emp.getIsActive())) continue;
+            boolean alreadySubmitted = statusRepository
+                    .findByEmployeeIdAndAssessmentYear(eid, cycle.getAssessmentYear())
+                    .map(s -> Boolean.TRUE.equals(s.getIsAcrSubmitted())).orElse(false);
+            if (alreadySubmitted) continue;
 
             notify(eid, senderId, "APAR_REMINDER",
                     "APAR Submission Requested — " + cycle.getAssessmentYear(),
@@ -126,7 +128,8 @@ public class NotificationService {
                     cycle.getAssessmentYear());
             count++;
         }
-        if (count == 0) throw new BadRequestException("No active employee login accounts matched the selection");
+        if (count == 0) throw new BadRequestException(
+                "No eligible employees matched the selection. They may be inactive or already submitted.");
         return new MessageResponse("APAR reminder sent to " + count + " employee(s).");
     }
 
@@ -201,9 +204,15 @@ public class NotificationService {
     }
 
     private Set<Long> employeeLoginIds() {
+        Set<Long> activeDirectoryEmployees = employeeRepository.findByIsActiveTrue().stream()
+                .map(EmployeeDetails::getEmployeeId)
+                .collect(Collectors.toSet());
         return accountRepository.findAll().stream()
-                .filter(a -> a.getRole() == Role.EMPLOYEE && Boolean.TRUE.equals(a.getIsActive()))
-                .map(UserAccount::getEmployeeId).collect(Collectors.toSet());
+                .filter(a -> a.getRole() == Role.EMPLOYEE
+                        && Boolean.TRUE.equals(a.getIsActive())
+                        && activeDirectoryEmployees.contains(a.getEmployeeId()))
+                .map(UserAccount::getEmployeeId)
+                .collect(Collectors.toSet());
     }
 
     private Map<Long, String> nameMap() {

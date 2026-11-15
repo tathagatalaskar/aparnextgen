@@ -35,7 +35,7 @@ export default function Register() {
         designation: form.designation || null,
         mobileNumber: form.mobileNumber || null,
       })
-      setOk('Registration successful! Redirecting to login…')
+      setOk('Registration submitted and awaiting authority approval. You can sign in after activation. Redirecting to login…')
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
       const data = err.response?.data

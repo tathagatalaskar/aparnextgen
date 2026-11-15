@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 /** Registration + authority-side employee management (add / edit / activate). */
 @Service
@@ -34,7 +35,7 @@ public class EmployeeService {
     // ── Public self-registration ──
     @Transactional
     public MessageResponse register(RegisterRequest req) {
-        String email = req.email().trim().toLowerCase();
+        String email = req.email().trim().toLowerCase(Locale.ROOT);
         if (accountRepository.findByEmail(email).isPresent())
             throw new BadRequestException("An account with this email already exists");
 
@@ -51,7 +52,8 @@ public class EmployeeService {
                 .designation(trimOrNull(req.designation()))
                 .mobileNumber(trimOrNull(req.mobileNumber()))
                 .email(email)
-                .isActive(true)
+                // Public self-registration must be approved by an authority before sign-in.
+                .isActive(false)
                 .build();
         emp = employeeRepository.save(emp);   // employee_id generated from sequence
 
@@ -60,11 +62,11 @@ public class EmployeeService {
                 .email(email)
                 .passwordHash(passwordEncoder.encode(req.password()))
                 .role(Role.EMPLOYEE)
-                .isActive(true)
+                .isActive(false)
                 .build();
         accountRepository.save(account);
 
-        return new MessageResponse("Registration successful. You can now log in with " + email);
+        return new MessageResponse("Registration submitted and is awaiting authority approval. You can sign in after your account is activated.");
     }
 
     // ── Authority: list all employees ──
@@ -108,7 +110,7 @@ public class EmployeeService {
         if (req.createLogin()) {
             if (req.email() == null || req.password() == null)
                 throw new BadRequestException("Email and password are required to create a login");
-            String email = req.email().trim().toLowerCase();
+            String email = req.email().trim().toLowerCase(Locale.ROOT);
             if (accountRepository.findByEmail(email).isPresent())
                 throw new BadRequestException("An account with this email already exists");
             accountRepository.save(UserAccount.builder()

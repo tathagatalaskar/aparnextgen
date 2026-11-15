@@ -37,7 +37,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String email = jwtService.extractEmail(token);
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 AppUserDetails ud = (AppUserDetails) userDetailsService.loadUserByUsername(email);
-                if (jwtService.isValid(token, ud.getUsername())) {
+                // Enforce account deactivation immediately, even for JWTs issued earlier.
+                if (ud.isEnabled() && jwtService.isValid(token, ud.getUsername())) {
                     var auth = new UsernamePasswordAuthenticationToken(ud, null, ud.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);

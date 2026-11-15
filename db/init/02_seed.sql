@@ -2,21 +2,6 @@
 -- SEED DATA  (all login passwords = 'Password@123')
 -- ═══════════════════════════════════════════════════════════════════════
 
--- ── Lookup data ──
-INSERT INTO tran.organization (organization_id, organization_name) VALUES
-    (1, 'National Informatics Centre'),
-    (2, 'Ministry of Electronics & IT (MeitY)');
-
-INSERT INTO tran.office (office_id, organization_id, office_name) VALUES
-    (101, 1, 'NIC Tripura State Centre, Agartala'),
-    (102, 1, 'NIC Headquarters, New Delhi');
-
-INSERT INTO tran.department (department_id, department_name) VALUES
-    (10, 'e-Governance Division'),
-    (20, 'Software Development Division'),
-    (30, 'Network & Infrastructure Division'),
-    (40, 'Administration & HR');
-
 -- ── Employee master roll (the directory) ──
 INSERT INTO tran.employee_details
     (employee_id, organization_id, office_id, department_id, emp_ini_name, emp_first_name, emp_mid_name, emp_last_name, gender, date_of_birth, mobile_number, email, designation, joining_date, is_active) VALUES
