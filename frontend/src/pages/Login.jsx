@@ -3,11 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { FileText, LogIn, AlertCircle } from 'lucide-react'
 
-const DEMO = [
-  ['Employee', 'employee@nic.in'],
-  ['Authority', 'authority@nic.in'],
-]
-
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -18,13 +13,16 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault()
-    setError(''); setLoading(true)
+    setError('')
+    setLoading(true)
     try {
       await login(email.trim(), password)
-      navigate('/')
+      navigate('/', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed')
-    } finally { setLoading(false) }
+      setError(err.response?.data?.error || err.message || 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -46,31 +44,19 @@ export default function Login() {
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">NIC Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@nic.in" required
+              placeholder="name@nic.in" required autoComplete="username"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-maroon/30" />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Password</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+              autoComplete="current-password"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-maroon/30" />
           </div>
           <button type="submit" disabled={loading}
             className="w-full flex items-center justify-center gap-2 bg-maroon hover:bg-maroon-dark text-white font-semibold py-2.5 rounded transition-colors disabled:opacity-60">
             <LogIn size={16} /> {loading ? 'Signing in…' : 'Sign In'}
           </button>
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[11px] text-gray-400 mb-2">Demo accounts (password: Password@123)</p>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO.map(([label, mail]) => (
-                <button key={mail} type="button"
-                  onClick={() => { setEmail(mail); setPassword('Password@123') }}
-                  className="text-[11px] border border-gray-200 rounded px-2 py-1 hover:bg-gray-50 text-left">
-                  <span className="font-semibold block">{label}</span>
-                  <span className="text-gray-400">{mail}</span>
-                </button>
-              ))}
-            </div>
-          </div>
           <p className="text-center text-xs text-gray-500 pt-1">
             New employee? <Link to="/register" className="text-maroon font-semibold">Create an account</Link>
           </p>
