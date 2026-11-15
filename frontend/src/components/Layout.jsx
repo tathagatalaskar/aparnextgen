@@ -26,8 +26,8 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen">
       <header className="bg-maroon text-white shadow">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <FileText size={26} />
             <div>
               <p className="text-[10px] tracking-widest uppercase text-white/70 font-medium">
@@ -37,13 +37,13 @@ export default function Layout({ children }) {
             </div>
           </div>
           {user && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-end gap-2 flex-wrap">
               {navBtn('/', 'Dashboard', LayoutDashboard)}
               {isAuthority && navBtn('/directory', 'Employees', Users)}
               {isAuthority && navBtn('/notify', 'Notify', Send)}
               {!isAuthority && navBtn('/profile', 'My Profile', UserCircle)}
-              {!isAuthority && <NotificationBell />}
-              <div className="text-right ml-2">
+              <NotificationBell />
+              <div className="text-right ml-1">
                 <p className="text-sm font-semibold">{user.fullName}</p>
                 <p className="text-[11px] text-white/70 flex items-center gap-1 justify-end">
                   <ShieldCheck size={12} /> {ROLE_LABEL[user.role] || user.role} · ID {user.employeeId}
