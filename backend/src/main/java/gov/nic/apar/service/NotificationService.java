@@ -25,9 +25,8 @@ public class NotificationService {
     private final AcrCycleRepository cycleRepository;
     private final LookupService lookup;
 
-    private static final int REMINDER_LEAD_DAYS = 14; // start auto-reminders this many days before due
+    private static final int REMINDER_LEAD_DAYS = 14;
 
-    // ── Employee: their notifications ──
     @Transactional(readOnly = true)
     public List<NotificationView> listFor(Long employeeId) {
         Map<Long, String> names = nameMap();
@@ -58,10 +57,14 @@ public class NotificationService {
     @Transactional
     public void markAllRead(Long employeeId) {
         notificationRepository.findByRecipientEmployeeIdOrderByCreatedAtDesc(employeeId)
-                .forEach(n -> { if (!Boolean.TRUE.equals(n.getIsRead())) { n.setIsRead(true); notificationRepository.save(n); } });
+                .forEach(n -> {
+                    if (!Boolean.TRUE.equals(n.getIsRead())) {
+                        n.setIsRead(true);
+                        notificationRepository.save(n);
+                    }
+                });
     }
 
-    // ── Internal helper used by other services ──
     @Transactional
     public void notify(Long recipientId, Long senderId, String type, String title, String message, String year) {
         notificationRepository.save(Notification.builder()
@@ -73,11 +76,10 @@ public class NotificationService {
                 .build());
     }
 
-    // ── Authority: manual notification to one / many / department / all ──
     @Transactional
     public MessageResponse sendManual(SendNotificationRequest req, Long senderId) {
         List<Long> recipients = resolveRecipients(req);
-        if (recipients.isEmpty()) throw new BadRequestException("No recipients matched the selection");
+        if (recipients.isEmpty()) throw new BadRequestException("No active employee login accounts matched the selection");
         for (Long rid : recipients) {
             notify(rid, senderId, "MANUAL", req.title().trim(), req.message().trim(), null);
         }
@@ -89,7 +91,12 @@ public class NotificationService {
             case "ONE", "MANY" -> {
                 if (req.employeeIds() == null || req.employeeIds().isEmpty())
                     throw new BadRequestException("Select at least one employee");
-                yield req.employeeIds();
+                Set<Long> eligible = employeeLoginIds();
+                yield req.employeeIds().stream()
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .filter(eligible::contains)
+                        .toList();
             }
             case "DEPARTMENT" -> {
                 if (req.departmentId() == null) throw new BadRequestException("Select a department");
@@ -108,14 +115,27 @@ public class NotificationService {
         };
     }
 
-    // ── Authority: send APAR reminders to selected employees (unlocks their form) ──
     @Transactional
     public MessageResponse sendReminders(List<Long> employeeIds, Long senderId) {
+        if (employeeIds == null || employeeIds.isEmpty())
+            throw new BadRequestException("Select at least one employee");
+
         AcrCycle cycle = currentCycle();
+        Set<Long> eligibleLogins = employeeLoginIds();
         int count = 0;
-        for (Long eid : employeeIds) {
-            EmployeeDetails emp = employeeRepository.findByEmployeeId(eid).orElse(null);
+        for (Long eid : employeeIds.stream().filter(Objects::nonNull).distinct().toList()) {
+            if (!eligibleLogins.contains(eid)) continue;
+
+            EmployeeDetails emp = employeeRepository.findByEmployeeId(eid)
+                    .filter(e -> Boolean.TRUE.equals(e.getIsActive()))
+                    .orElse(null);
             if (emp == null) continue;
+
+            boolean submitted = statusRepository
+                    .findByEmployeeIdAndAssessmentYear(eid, cycle.getAssessmentYear())
+                    .map(s -> Boolean.TRUE.equals(s.getIsAcrSubmitted())).orElse(false);
+            if (submitted) continue;
+
             notify(eid, senderId, "APAR_REMINDER",
                     "APAR Submission Requested — " + cycle.getAssessmentYear(),
                     "You are requested to fill and submit your APAR for the " + cycle.getAssessmentYear()
@@ -123,22 +143,17 @@ public class NotificationService {
                     cycle.getAssessmentYear());
             count++;
         }
-        return new MessageResponse("APAR reminder sent to " + count + " employee(s).");
+        return new MessageResponse("APAR reminder sent to " + count + " eligible employee(s).");
     }
 
-    // ── Automatic reminders (scheduled): remind active employees who haven't submitted ──
     @Transactional
     public int generateAutoReminders() {
         Optional<AcrCycle> open = cycleRepository.findFirstByIsOpenTrueOrderByDueDateDesc();
         if (open.isEmpty()) return 0;
         AcrCycle cycle = open.get();
-        // only start reminding within the lead window before the due date
         if (LocalDate.now().isBefore(cycle.getDueDate().minusDays(REMINDER_LEAD_DAYS))) return 0;
 
-        Set<Long> withLogin = accountRepository.findAll().stream()
-                .filter(a -> a.getRole() == Role.EMPLOYEE && Boolean.TRUE.equals(a.getIsActive()))
-                .map(UserAccount::getEmployeeId).collect(Collectors.toSet());
-
+        Set<Long> withLogin = employeeLoginIds();
         int created = 0;
         for (Long eid : withLogin) {
             boolean submitted = statusRepository
@@ -158,14 +173,11 @@ public class NotificationService {
         return created;
     }
 
-    // ── Authority: who hasn't submitted yet ──
     @Transactional(readOnly = true)
     public List<PendingReportView> pendingReports() {
         AcrCycle cycle = currentCycle();
         Map<Long, String> depts = lookup.departments();
-        Set<Long> withLogin = accountRepository.findAll().stream()
-                .filter(a -> a.getRole() == Role.EMPLOYEE && Boolean.TRUE.equals(a.getIsActive()))
-                .map(UserAccount::getEmployeeId).collect(Collectors.toSet());
+        Set<Long> withLogin = employeeLoginIds();
 
         List<PendingReportView> out = new ArrayList<>();
         for (EmployeeDetails e : employeeRepository.findByIsActiveTrue()) {
@@ -183,7 +195,6 @@ public class NotificationService {
         return out;
     }
 
-    // ── Eligibility: is the APAR form unlocked for this employee? ──
     @Transactional(readOnly = true)
     public SubmitEligibilityView eligibility(Long employeeId) {
         Optional<AcrCycle> open = cycleRepository.findFirstByIsOpenTrueOrderByDueDateDesc();
@@ -205,7 +216,7 @@ public class NotificationService {
                 .orElseThrow(() -> new BadRequestException("No open assessment cycle configured"));
     }
 
-    /** Employee IDs that have an active EMPLOYEE login (excludes authority + login-less records). */
+    /** Active employees with active EMPLOYEE accounts (excludes authority and login-less records). */
     private Set<Long> employeeLoginIds() {
         return accountRepository.findAll().stream()
                 .filter(a -> a.getRole() == Role.EMPLOYEE && Boolean.TRUE.equals(a.getIsActive()))
