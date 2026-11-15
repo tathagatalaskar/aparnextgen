@@ -6,7 +6,7 @@
 SET client_min_messages TO WARNING;
 
 -- Faculty instruction: create schema first
-CREATE SCHEMA IF NOT EXISTS tran AUTHORIZATION apar_admin;
+CREATE SCHEMA IF NOT EXISTS tran;
 
 -- Sequence for new employee IDs (self-registration / authority-added).
 -- Starts above the seeded 81xxx demo IDs to avoid collisions.
