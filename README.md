@@ -85,8 +85,8 @@ Stop with `Ctrl+C`. Remove local database data with `docker compose down -v`.
 ```bash
 createdb apar_db
 psql -d apar_db -f db/init/01_schema.sql
-psql -d apar_db -f db/init/02_seed.sql
 psql -d apar_db -f db/init/02_reference_data.sql
+psql -d apar_db -f db/init/02_seed.sql
 cd backend && APP_JWT_SECRET=local_dev_only_change_to_a_random_secret_of_at_least_32_bytes mvn spring-boot:run
 # In a second terminal:
 cd frontend && npm ci && npm run dev
