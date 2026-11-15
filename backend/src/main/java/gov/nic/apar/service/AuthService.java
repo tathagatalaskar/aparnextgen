@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -25,9 +26,10 @@ public class AuthService {
     private final EmployeeDetailsRepository employeeRepository;
 
     public LoginResponse login(LoginRequest req) {
-        authManager.authenticate(new UsernamePasswordAuthenticationToken(req.email(), req.password()));
+        String email = req.email().trim().toLowerCase(Locale.ROOT);
+        authManager.authenticate(new UsernamePasswordAuthenticationToken(email, req.password()));
 
-        UserAccount account = accountRepository.findByEmail(req.email())
+        UserAccount account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Account not found"));
         EmployeeDetails emp = employeeRepository.findByEmployeeId(account.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException("Employee record not found"));
