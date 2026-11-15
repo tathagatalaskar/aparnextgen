@@ -1,0 +1,21 @@
+# Node
+node_modules/
+frontend/dist/
+npm-debug.log*
+
+# Java / Maven
+backend/target/
+*.class
+
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+
+# Vercel local metadata
+.vercel/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
